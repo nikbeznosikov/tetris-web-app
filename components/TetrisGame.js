@@ -128,7 +128,9 @@ const TetrisGame = () => {
 			position: { x: Math.floor(board[0].length / 2) - 1, y: 0 },
 		};
 	};
+
 	const [activeTetrimino, setActiveTetrimino] = useState(getRandomTetrimino());
+	const [nextTetrimino, setNextTetrimino] = useState(getRandomTetrimino());
 
 	const lockTetrimino = () => {
 		const shape = Tetriminos[activeTetrimino.shape][activeTetrimino.rotation];
@@ -152,15 +154,64 @@ const TetrisGame = () => {
 		const linesCleared = clearLines();
 		setScore((prevScore) => prevScore + linesCleared * 10);
 
-		setActiveTetrimino(getRandomTetrimino());
+		setActiveTetrimino(nextTetrimino);
+		setNextTetrimino(getRandomTetrimino());
+	};
+
+	const renderNextTetrimino = (tetrimino) => {
+		const rows = 4;
+		const cols = 4;
+		const shape = Tetriminos[tetrimino.shape][tetrimino.rotation];
+
+		// Create an empty matrix with 4 rows and 4 columns
+		const matrix = Array.from({ length: rows }, () => Array(cols).fill(0));
+
+		// Add the shape to the matrix
+		for (let row = 0; row < shape.length; row++) {
+			for (let col = 0; col < shape[row].length; col++) {
+				if (shape[row][col]) {
+					matrix[row][col] = 1;
+				}
+			}
+		}
+
+		// Use a dummy activeTetrimino prop
+		const dummyActiveTetrimino = {
+			shape: tetrimino.shape,
+			rotation: tetrimino.rotation,
+			position: { x: 0, y: 0 },
+		};
+
+		return <TetrisBoard board={matrix} activeTetrimino={dummyActiveTetrimino} />;
 	};
 
 	const rotateTetrimino = () => {
 		const nextRotation = (activeTetrimino.rotation + 1) % Tetriminos[activeTetrimino.shape].length;
 		const newTetrimino = { ...activeTetrimino, rotation: nextRotation };
 
-		if (!hasCollision({ ...activeTetrimino.position })) {
-			setActiveTetrimino(newTetrimino);
+		let newPosition = { ...activeTetrimino.position };
+
+		// Check for collision after rotation
+		const shape = Tetriminos[newTetrimino.shape][newTetrimino.rotation];
+		for (let row = 0; row < shape.length; row++) {
+			for (let col = 0; col < shape[row].length; col++) {
+				if (shape[row][col]) {
+					const boardX = newPosition.x + col;
+					const boardY = newPosition.y + row;
+
+					if (boardX < 0) {
+						newPosition.x += 1;
+					} else if (boardX >= board[0].length) {
+						newPosition.x -= 1;
+					} else if (boardY >= board.length) {
+						newPosition.y -= 1;
+					}
+				}
+			}
+		}
+
+		if (!hasCollision(newPosition)) {
+			setActiveTetrimino({ ...newTetrimino, position: newPosition });
 		}
 	};
 
@@ -188,6 +239,10 @@ const TetrisGame = () => {
 				handleKeys={['left', 'right', 'down', 'up']}
 				onKeyEvent={(key, e) => handleKeyEvent(key, e)}
 			/>
+			<div className='next-tetrimino'>
+				<h3>Next Tetrimino:</h3>
+				{renderNextTetrimino(nextTetrimino)}
+			</div>
 		</div>
 	);
 };
